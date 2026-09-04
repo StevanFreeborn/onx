@@ -1,5 +1,6 @@
 use std::io::Write;
 
+use onspring::{App, CollectionResponse, PagedResponse};
 use serde::Serialize;
 
 use crate::{CliError, CliResult};
@@ -19,6 +20,72 @@ struct ErrorEnvelope<'a> {
 #[serde(rename_all = "camelCase")]
 pub struct SuccessResponse {
   pub ok: bool,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PagedOutput<T> {
+  pub page_number: Option<i32>,
+  pub page_size: Option<i32>,
+  pub total_pages: Option<i32>,
+  pub total_records: Option<i32>,
+  pub items: Option<Vec<T>>,
+}
+
+impl<T, U> From<PagedResponse<U>> for PagedOutput<T>
+where
+  T: From<U>,
+{
+  fn from(value: PagedResponse<U>) -> Self {
+    Self {
+      page_number: value.page_number,
+      page_size: value.page_size,
+      total_pages: value.total_pages,
+      total_records: value.total_records,
+      items: value
+        .items
+        .map(|items| items.into_iter().map(T::from).collect()),
+    }
+  }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CollectionOutput<T> {
+  pub count: Option<i32>,
+  pub items: Option<Vec<T>>,
+}
+
+impl<T, U> From<CollectionResponse<U>> for CollectionOutput<T>
+where
+  T: From<U>,
+{
+  fn from(value: CollectionResponse<U>) -> Self {
+    Self {
+      count: value.count,
+      items: value
+        .items
+        .map(|items| items.into_iter().map(T::from).collect()),
+    }
+  }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppOutput {
+  pub href: Option<String>,
+  pub id: i32,
+  pub name: Option<String>,
+}
+
+impl From<App> for AppOutput {
+  fn from(value: App) -> Self {
+    Self {
+      href: value.href,
+      id: value.id,
+      name: value.name,
+    }
+  }
 }
 
 pub fn render_json<T: Serialize>(value: &T, pretty: bool) -> CliResult<String> {
