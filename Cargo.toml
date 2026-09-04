@@ -1,0 +1,20 @@
+[package]
+name = "onx"
+version = "0.0.0"
+edition = "2024"
+description = "An agent-friendly CLI for the Onspring API"
+license = "MIT"
+repository = "https://github.com/StevanFreeborn/onx"
+
+[dependencies]
+chrono = { version = "0.4.45", features = ["serde"] }
+clap = { version = "4.6.6", features = ["derive", "env"] }
+mime_guess = "2.0.5"
+onspring-api-sdk-rust = "0.0.1"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread"] }
+uuid = { version = "1.26.0", features = ["serde"] }
+
+[dev-dependencies]
+tempfile = "3.27.0"
