@@ -1,3 +1,5 @@
+use std::io::Write;
+
 use serde::Serialize;
 
 use crate::{CliError, CliResult};
@@ -11,6 +13,12 @@ struct ErrorBody<'a> {
 #[derive(Debug, Serialize)]
 struct ErrorEnvelope<'a> {
   pub error: ErrorBody<'a>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SuccessResponse {
+  pub ok: bool,
 }
 
 pub fn render_json<T: Serialize>(value: &T, pretty: bool) -> CliResult<String> {
@@ -30,6 +38,16 @@ pub fn render_error(err: &CliError, pretty: bool) -> CliResult<String> {
   };
 
   render_json(&envelope, pretty)
+}
+
+pub fn write_json<W: Write, T: Serialize>(
+  writer: &mut W,
+  value: &T,
+  pretty: bool,
+) -> CliResult<()> {
+  let rendered = render_json(value, pretty)?;
+  writeln!(writer, "{rendered}").map_err(|_| CliError::runtime("Failed to write output"))?;
+  Ok(())
 }
 
 #[cfg(test)]
@@ -75,5 +93,16 @@ mod tests {
     ));
     assert_eq!(result, expected);
   }
-}
 
+  #[test]
+  fn write_json_when_called_with_writer_it_should_write_formatted_string() {
+    let data = json!({"ok": true});
+    let mut buffer = Vec::new();
+
+    let result = write_json(&mut buffer, &data, false);
+    assert_eq!(result, Ok(()));
+
+    let output_str = String::from_utf8(buffer).unwrap();
+    assert_eq!(output_str, "{\"ok\":true}\n");
+  }
+}

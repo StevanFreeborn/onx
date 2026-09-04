@@ -1,4 +1,4 @@
-use clap::Parser;
+use clap::{Parser, Subcommand};
 
 #[derive(Debug, PartialEq, Parser)]
 #[command(name = "onx")]
@@ -22,4 +22,13 @@ pub struct Cli {
   #[arg(help = "Pretty-print JSON output")]
   #[arg(default_value_t = false)]
   pub pretty: bool,
+
+  #[command(subcommand)]
+  pub command: Command,
+}
+
+#[derive(Debug, PartialEq, Subcommand)]
+pub enum Command { 
+  #[command(about = "Check connectivity to the Onspring API")]
+  Ping,
 }
