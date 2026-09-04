@@ -1,6 +1,6 @@
 use clap::Parser;
 
-#[derive(Debug, Parser)]
+#[derive(Debug, PartialEq, Parser)]
 #[command(name = "onx")]
 #[command(version)]
 #[command(about)]
