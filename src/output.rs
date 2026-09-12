@@ -1,7 +1,10 @@
 use std::io::Write;
 
-use onspring::{App, CollectionResponse, PagedResponse};
+use onspring::{
+  App, CollectionResponse, Field, FormulaOutputType, ListFieldValue, Multiplicity, PagedResponse,
+};
 use serde::Serialize;
+use uuid::Uuid;
 
 use crate::{CliError, CliResult};
 
@@ -84,6 +87,67 @@ impl From<App> for AppOutput {
       href: value.href,
       id: value.id,
       name: value.name,
+    }
+  }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListFieldValueOutput {
+  pub id: Uuid,
+  pub name: String,
+  pub sort_order: i32,
+  pub numeric_value: Option<f64>,
+  pub color: Option<String>,
+}
+
+impl From<ListFieldValue> for ListFieldValueOutput {
+  fn from(value: ListFieldValue) -> Self {
+    Self {
+      id: value.id,
+      name: value.name,
+      sort_order: value.sort_order,
+      numeric_value: value.numeric_value,
+      color: value.color,
+    }
+  }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FieldOutput {
+  pub id: i32,
+  pub app_id: i32,
+  pub name: Option<String>,
+  #[serde(rename = "type")]
+  pub field_type: Option<String>,
+  pub status: Option<String>,
+  pub is_required: bool,
+  pub is_unique: bool,
+  pub multiplicity: Option<Multiplicity>,
+  pub list_id: Option<i32>,
+  pub values: Option<Vec<ListFieldValueOutput>>,
+  pub output_type: Option<FormulaOutputType>,
+  pub referenced_app_id: Option<i32>,
+}
+
+impl From<Field> for FieldOutput {
+  fn from(value: Field) -> Self {
+    Self {
+      id: value.id,
+      app_id: value.app_id,
+      name: value.name,
+      field_type: value.field_type,
+      status: value.status,
+      is_required: value.is_required,
+      is_unique: value.is_unique,
+      multiplicity: value.multiplicity,
+      list_id: value.list_id,
+      values: value
+        .values
+        .map(|values| values.into_iter().map(ListFieldValueOutput::from).collect()),
+      output_type: value.output_type,
+      referenced_app_id: value.referenced_app_id,
     }
   }
 }

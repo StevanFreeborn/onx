@@ -1,5 +1,5 @@
 use onspring::{
-  App, CollectionResponse, OnspringClient, OnspringError, PagedResponse, PagingRequest,
+  App, CollectionResponse, Field, OnspringClient, OnspringError, PagedResponse, PagingRequest,
 };
 
 pub trait OnspringRunner {
@@ -19,6 +19,22 @@ pub trait OnspringRunner {
     &self,
     ids: &[i32],
   ) -> impl std::future::Future<Output = Result<CollectionResponse<App>, OnspringError>> + Send;
+
+  fn list_fields(
+    &self,
+    app_id: i32,
+    paging: Option<PagingRequest>,
+  ) -> impl std::future::Future<Output = Result<PagedResponse<Field>, OnspringError>> + Send;
+
+  fn get_field(
+    &self,
+    field_id: i32,
+  ) -> impl std::future::Future<Output = Result<Field, OnspringError>> + Send;
+
+  fn batch_get_fields(
+    &self,
+    ids: &[i32],
+  ) -> impl std::future::Future<Output = Result<CollectionResponse<Field>, OnspringError>> + Send;
 }
 
 impl OnspringRunner for OnspringClient {
@@ -40,6 +56,22 @@ impl OnspringRunner for OnspringClient {
   async fn batch_get_apps(&self, ids: &[i32]) -> Result<CollectionResponse<App>, OnspringError> {
     self.batch_get_apps(ids).await
   }
+
+  async fn list_fields(
+    &self,
+    app_id: i32,
+    paging: Option<PagingRequest>,
+  ) -> Result<PagedResponse<Field>, OnspringError> {
+    self.list_fields(app_id, paging).await
+  }
+
+  async fn get_field(&self, field_id: i32) -> Result<Field, OnspringError> {
+    self.get_field(field_id).await
+  }
+
+  async fn batch_get_fields(&self, ids: &[i32]) -> Result<CollectionResponse<Field>, OnspringError> {
+    self.batch_get_fields(ids).await
+  }
 }
 
 #[cfg(test)]
@@ -55,6 +87,14 @@ pub mod testing {
     pub list_apps_paging: Mutex<Option<Option<PagingRequest>>>,
     pub get_app_id: Mutex<Option<i32>>,
     pub batch_get_apps_ids: Mutex<Option<Vec<i32>>>,
+
+    pub list_fields_result: Result<PagedResponse<Field>, OnspringError>,
+    pub get_field_result: Result<Field, OnspringError>,
+    pub batch_get_fields_result: Result<CollectionResponse<Field>, OnspringError>,
+    pub list_fields_app_id: Mutex<Option<i32>>,
+    pub list_fields_paging: Mutex<Option<Option<PagingRequest>>>,
+    pub get_field_id: Mutex<Option<i32>>,
+    pub batch_get_fields_ids: Mutex<Option<Vec<i32>>>,
   }
 
   impl Default for MockClient {
@@ -80,6 +120,36 @@ pub mod testing {
         list_apps_paging: Mutex::new(None),
         get_app_id: Mutex::new(None),
         batch_get_apps_ids: Mutex::new(None),
+
+        list_fields_result: Ok(PagedResponse {
+          page_number: None,
+          page_size: None,
+          total_pages: None,
+          total_records: None,
+          items: None,
+        }),
+        get_field_result: Ok(Field {
+          id: 1,
+          app_id: 1,
+          name: None,
+          field_type: None,
+          status: None,
+          is_required: false,
+          is_unique: false,
+          multiplicity: None,
+          list_id: None,
+          values: None,
+          output_type: None,
+          referenced_app_id: None,
+        }),
+        batch_get_fields_result: Ok(CollectionResponse {
+          count: None,
+          items: None,
+        }),
+        list_fields_app_id: Mutex::new(None),
+        list_fields_paging: Mutex::new(None),
+        get_field_id: Mutex::new(None),
+        batch_get_fields_ids: Mutex::new(None),
       }
     }
   }
@@ -132,6 +202,35 @@ pub mod testing {
     async fn batch_get_apps(&self, ids: &[i32]) -> Result<CollectionResponse<App>, OnspringError> {
       *self.batch_get_apps_ids.lock().unwrap() = Some(ids.to_vec());
       match &self.batch_get_apps_result {
+        Ok(res) => Ok(res.clone()),
+        Err(err) => Err(clone_onspring_error(err)),
+      }
+    }
+
+    async fn list_fields(
+      &self,
+      app_id: i32,
+      paging: Option<PagingRequest>,
+    ) -> Result<PagedResponse<Field>, OnspringError> {
+      *self.list_fields_app_id.lock().unwrap() = Some(app_id);
+      *self.list_fields_paging.lock().unwrap() = Some(paging);
+      match &self.list_fields_result {
+        Ok(res) => Ok(res.clone()),
+        Err(err) => Err(clone_onspring_error(err)),
+      }
+    }
+
+    async fn get_field(&self, field_id: i32) -> Result<Field, OnspringError> {
+      *self.get_field_id.lock().unwrap() = Some(field_id);
+      match &self.get_field_result {
+        Ok(res) => Ok(res.clone()),
+        Err(err) => Err(clone_onspring_error(err)),
+      }
+    }
+
+    async fn batch_get_fields(&self, ids: &[i32]) -> Result<CollectionResponse<Field>, OnspringError> {
+      *self.batch_get_fields_ids.lock().unwrap() = Some(ids.to_vec());
+      match &self.batch_get_fields_result {
         Ok(res) => Ok(res.clone()),
         Err(err) => Err(clone_onspring_error(err)),
       }

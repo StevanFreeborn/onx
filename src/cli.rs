@@ -36,6 +36,11 @@ pub enum Command {
     #[command(subcommand)]
     command: AppsCommand,
   },
+  #[command(about = "Perform operations against the fields in the instance")]
+  Fields {
+    #[command(subcommand)]
+    command: FieldsCommand,
+  },
 }
 
 #[derive(Debug, PartialEq, Subcommand)]
@@ -61,6 +66,37 @@ pub enum AppsCommand {
   },
 }
 
+#[derive(Debug, PartialEq, Subcommand)]
+pub enum FieldsCommand {
+  #[command(about = "Get information for a list of fields")]
+  List {
+    #[arg(long)]
+    #[arg(short = 'i')]
+    #[arg(help = "App id to get")]
+    app_id: i32,
+    
+    #[command(flatten)]
+    paging: PagingArgs,
+  },
+
+  #[command(about = "Get information about a field")]
+  Get {
+    #[arg(long)]
+    #[arg(short = 'i')]
+    #[arg(help = "Field id to get")]
+    field_id: i32,
+  },
+
+  #[command(about = "Get information for a batch of fields")]
+  BatchGet {
+    #[arg(long)]
+    #[arg(value_delimiter = ',')]
+    #[arg(short = 'i')]
+    #[arg(help = "Comma-separated list of field ids to get")]
+    ids: Vec<i32>,
+  },
+}
+
 #[derive(Debug, PartialEq, Clone, Args, Default)]
 pub struct PagingArgs {
   #[arg(long)]
@@ -79,8 +115,8 @@ where
   I: IntoIterator<Item = T>,
   T: Into<std::ffi::OsString> + Clone,
 {
-  use clap::error::ErrorKind;
   use crate::error::CliError;
+  use clap::error::ErrorKind;
 
   Cli::try_parse_from(args).map_err(|e| match e.kind() {
     ErrorKind::DisplayHelp | ErrorKind::DisplayVersion => CliError::info(e.to_string()),
@@ -206,16 +242,15 @@ mod tests {
         base_url: None,
         pretty: false,
         command: Command::Apps {
-          command: AppsCommand::BatchGet {
-            ids: vec![1, 2, 3],
-          },
+          command: AppsCommand::BatchGet { ids: vec![1, 2, 3] },
         },
       })
     );
   }
 
   #[test]
-  fn parse_cli_from_when_called_with_apps_batch_get_without_ids_it_should_return_cli_with_empty_ids() {
+  fn parse_cli_from_when_called_with_apps_batch_get_without_ids_it_should_return_cli_with_empty_ids()
+   {
     let result = parse_cli_from(["test", "apps", "batch-get"]);
 
     assert_eq!(
@@ -232,7 +267,8 @@ mod tests {
   }
 
   #[test]
-  fn parse_cli_from_when_called_with_apps_batch_get_invalid_id_format_it_should_return_usage_error() {
+  fn parse_cli_from_when_called_with_apps_batch_get_invalid_id_format_it_should_return_usage_error()
+  {
     let result = parse_cli_from(["test", "apps", "batch-get", "--ids", "invalid"]);
 
     assert!(result.is_err());
@@ -285,6 +321,165 @@ mod tests {
   }
 
   #[test]
+  fn parse_cli_from_when_called_with_fields_list_it_should_return_cli() {
+    let result = parse_cli_from(["test", "fields", "list", "--app-id", "10"]);
+
+    assert_eq!(
+      result,
+      Ok(Cli {
+        api_key: None,
+        base_url: None,
+        pretty: false,
+        command: Command::Fields {
+          command: FieldsCommand::List {
+            app_id: 10,
+            paging: PagingArgs::default(),
+          },
+        },
+      })
+    );
+  }
+
+  #[test]
+  fn parse_cli_from_when_called_with_fields_list_paging_args_it_should_return_cli() {
+    let result = parse_cli_from([
+      "test",
+      "fields",
+      "list",
+      "-i",
+      "10",
+      "--page-number",
+      "2",
+      "--page-size",
+      "25",
+    ]);
+
+    assert_eq!(
+      result,
+      Ok(Cli {
+        api_key: None,
+        base_url: None,
+        pretty: false,
+        command: Command::Fields {
+          command: FieldsCommand::List {
+            app_id: 10,
+            paging: PagingArgs {
+              page_number: Some(2),
+              page_size: Some(25),
+            },
+          },
+        },
+      })
+    );
+  }
+
+  #[test]
+  fn parse_cli_from_when_called_with_fields_list_missing_app_id_it_should_return_usage_error() {
+    let result = parse_cli_from(["test", "fields", "list"]);
+
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert_eq!(err.code, 2);
+  }
+
+  #[test]
+  fn parse_cli_from_when_called_with_fields_get_it_should_return_cli() {
+    let result = parse_cli_from(["test", "fields", "get", "--field-id", "123"]);
+
+    assert_eq!(
+      result,
+      Ok(Cli {
+        api_key: None,
+        base_url: None,
+        pretty: false,
+        command: Command::Fields {
+          command: FieldsCommand::Get { field_id: 123 },
+        },
+      })
+    );
+  }
+
+  #[test]
+  fn parse_cli_from_when_called_with_fields_get_short_flag_it_should_return_cli() {
+    let result = parse_cli_from(["test", "fields", "get", "-i", "123"]);
+
+    assert_eq!(
+      result,
+      Ok(Cli {
+        api_key: None,
+        base_url: None,
+        pretty: false,
+        command: Command::Fields {
+          command: FieldsCommand::Get { field_id: 123 },
+        },
+      })
+    );
+  }
+
+  #[test]
+  fn parse_cli_from_when_called_with_fields_get_missing_field_id_it_should_return_usage_error() {
+    let result = parse_cli_from(["test", "fields", "get"]);
+
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert_eq!(err.code, 2);
+  }
+
+  #[test]
+  fn parse_cli_from_when_called_with_fields_batch_get_it_should_return_cli() {
+    let result = parse_cli_from(["test", "fields", "batch-get", "--ids", "1,2,3"]);
+
+    assert_eq!(
+      result,
+      Ok(Cli {
+        api_key: None,
+        base_url: None,
+        pretty: false,
+        command: Command::Fields {
+          command: FieldsCommand::BatchGet { ids: vec![1, 2, 3] },
+        },
+      })
+    );
+  }
+
+  #[test]
+  fn parse_cli_from_when_called_with_fields_batch_get_without_ids_it_should_return_cli_with_empty_ids()
+  {
+    let result = parse_cli_from(["test", "fields", "batch-get"]);
+
+    assert_eq!(
+      result,
+      Ok(Cli {
+        api_key: None,
+        base_url: None,
+        pretty: false,
+        command: Command::Fields {
+          command: FieldsCommand::BatchGet { ids: vec![] },
+        },
+      })
+    );
+  }
+
+  #[test]
+  fn parse_cli_from_when_called_with_fields_batch_get_invalid_id_format_it_should_return_usage_error()
+  {
+    let result = parse_cli_from(["test", "fields", "batch-get", "--ids", "invalid"]);
+
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert_eq!(err.code, 2);
+  }
+
+  #[test]
+  fn parse_cli_from_when_called_with_fields_without_subcommand_it_should_return_usage_error() {
+    let result = parse_cli_from(["test", "fields"]);
+
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert_eq!(err.code, 2);
+  }
+
+  #[test]
   fn parse_cli_from_when_called_with_version_flag_it_should_return_info_with_code_0() {
     let result = parse_cli_from(["test", "--version"]);
 
@@ -295,4 +490,3 @@ mod tests {
     assert!(err.message.contains(env!("CARGO_PKG_VERSION")));
   }
 }
-
