@@ -58,14 +58,10 @@ pub fn validate_ids(ids: &[i32], name: &str, max_len: Option<usize>) -> CliResul
 }
 
 pub fn read_body<R: Read>(source: &BodySource, mut reader: R) -> CliResult<String> {
-  let count = [
-    source.json.is_some(),
-    source.file.is_some(),
-    source.stdin,
-  ]
-  .into_iter()
-  .filter(|&b| b)
-  .count();
+  let count = [source.json.is_some(), source.file.is_some(), source.stdin]
+    .into_iter()
+    .filter(|&b| b)
+    .count();
 
   if count == 0 {
     return Err(CliError::usage(
@@ -84,13 +80,8 @@ pub fn read_body<R: Read>(source: &BodySource, mut reader: R) -> CliResult<Strin
   }
 
   if let Some(ref path) = source.file {
-    return std::fs::read_to_string(path).map_err(|e| {
-      CliError::usage(format!(
-        "Failed to read file '{}': {}",
-        path.display(),
-        e
-      ))
-    });
+    return std::fs::read_to_string(path)
+      .map_err(|e| CliError::usage(format!("Failed to read file '{}': {}", path.display(), e)));
   }
 
   if source.stdin {
@@ -104,10 +95,7 @@ pub fn read_body<R: Read>(source: &BodySource, mut reader: R) -> CliResult<Strin
   unreachable!()
 }
 
-pub fn parse_body<T: DeserializeOwned, R: Read>(
-  source: &BodySource,
-  reader: R,
-) -> CliResult<T> {
+pub fn parse_body<T: DeserializeOwned, R: Read>(source: &BodySource, reader: R) -> CliResult<T> {
   let content = read_body(source, reader)?;
   serde_json::from_str(&content)
     .map_err(|e| CliError::usage(format!("Invalid JSON request body: {e}")))
@@ -261,9 +249,7 @@ mod tests {
     let ids = vec![1; 101];
     assert_eq!(
       validate_ids(&ids, "ids", Some(100)),
-      Err(CliError::usage(
-        "ids cannot contain more than 100 values."
-      ))
+      Err(CliError::usage("ids cannot contain more than 100 values."))
     );
   }
 

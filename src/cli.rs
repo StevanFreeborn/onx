@@ -51,6 +51,12 @@ pub enum Command {
     #[command(subcommand)]
     command: RecordsCommand,
   },
+
+  #[command(about = "Perform operations against the files in the instance")]
+  Files {
+    #[command(subcommand)]
+    command: FilesCommand,
+  },
 }
 
 #[derive(Debug, PartialEq, Subcommand)]
@@ -60,19 +66,17 @@ pub enum AppsCommand {
 
   #[command(about = "Get information about an app")]
   Get {
-    #[arg(long = "app-id")]
-    #[arg(short = 'i')]
-    #[arg(alias = "app")]
+    #[arg(long = "app")]
+    #[arg(short = 'a')]
     #[arg(help = "App id to get")]
     app_id: i32,
   },
 
   #[command(about = "Get information for a batch of apps")]
   BatchGet {
-    #[arg(long = "ids")]
+    #[arg(long = "apps")]
     #[arg(value_delimiter = ',')]
-    #[arg(short = 'i')]
-    #[arg(alias = "apps")]
+    #[arg(short = 'a')]
     #[arg(help = "Comma-separated list of app ids to get")]
     ids: Vec<i32>,
   },
@@ -82,9 +86,8 @@ pub enum AppsCommand {
 pub enum FieldsCommand {
   #[command(about = "Get information for a list of fields")]
   List {
-    #[arg(long = "app-id")]
-    #[arg(short = 'i')]
-    #[arg(alias = "app")]
+    #[arg(long = "app")]
+    #[arg(short = 'a')]
     #[arg(help = "App id whose fields will be retrieved")]
     app_id: i32,
 
@@ -94,19 +97,17 @@ pub enum FieldsCommand {
 
   #[command(about = "Get information about a field")]
   Get {
-    #[arg(long = "field-id")]
-    #[arg(short = 'i')]
-    #[arg(alias = "field")]
+    #[arg(long = "field")]
+    #[arg(short = 'f')]
     #[arg(help = "Field id to get")]
     field_id: i32,
   },
 
   #[command(about = "Get information for a batch of fields")]
   BatchGet {
-    #[arg(long = "ids")]
+    #[arg(long = "fields")]
     #[arg(value_delimiter = ',')]
-    #[arg(short = 'i')]
-    #[arg(alias = "fields")]
+    #[arg(short = 'f')]
     #[arg(help = "Comma-separated list of field ids to get")]
     ids: Vec<i32>,
   },
@@ -197,6 +198,107 @@ pub enum RecordsCommand {
   BatchDelete {
     #[command(flatten)]
     body: BodySource,
+  },
+}
+
+#[derive(Debug, PartialEq, Subcommand)]
+pub enum FilesCommand {
+  #[command(about = "Get metadata info for a file")]
+  Info {
+    #[arg(long = "record")]
+    #[arg(short = 'r')]
+    #[arg(help = "Record id for record where the file is held")]
+    record_id: i32,
+
+    #[arg(long = "field")]
+    #[arg(short = 'f')]
+    #[arg(help = "Field id for field where the file is held")]
+    field_id: i32,
+
+    #[arg(long = "file")]
+    #[arg(short = 'l')]
+    #[arg(help = "The id of the file")]
+    file_id: i32,
+  },
+
+  #[command(about = "Get the content for a file")]
+  Get {
+    #[arg(long = "record")]
+    #[arg(short = 'r')]
+    #[arg(help = "Record id for record where the file is held")]
+    record_id: i32,
+
+    #[arg(long = "field")]
+    #[arg(short = 'f')]
+    #[arg(help = "Field id for field where the file is held")]
+    field_id: i32,
+
+    #[arg(long = "file")]
+    #[arg(short = 'l')]
+    #[arg(help = "The id of the file")]
+    file_id: i32,
+
+    #[arg(long)]
+    #[arg(short = 'o')]
+    #[arg(help = "The output path for the file")]
+    output: Option<PathBuf>,
+  },
+
+  Upload {
+    #[arg(long = "record")]
+    #[arg(short = 'r')]
+    #[arg(help = "Record id for record where the file should be uploaded")]
+    record_id: i32,
+
+    #[arg(long = "field")]
+    #[arg(short = 'f')]
+    #[arg(help = "Field id for field where the file should be uploaded")]
+    field_id: i32,
+
+    #[arg(long)]
+    #[arg(short = 'i')]
+    #[arg(help = "The input path of the file to be uploaded")]
+    input: Option<PathBuf>,
+
+    #[arg(long)]
+    #[arg(short = 's')]
+    #[arg(help = "Indicates whether file data should be read in from standard in")]
+    stdin: bool,
+
+    #[arg(long = "name")]
+    #[arg(short = 'n')]
+    #[arg(help = "The name of the file to be uploaded")]
+    file_name: Option<String>,
+
+    #[arg(long = "type")]
+    #[arg(short = 't')]
+    #[arg(help = "The content type of the file to be uploaded")]
+    content_type: Option<String>,
+
+    #[arg(long)]
+    #[arg(help = "Notes that should be included in the file upload")]
+    notes: Option<String>,
+
+    #[arg(long)]
+    #[arg(help = "Modified date that should be included in the file upload as RFC3339 timestamp")]
+    modified_date: Option<String>,
+  },
+
+  Delete {
+    #[arg(long = "record")]
+    #[arg(short = 'r')]
+    #[arg(help = "Record id for record where the file is held")]
+    record_id: i32,
+
+    #[arg(long = "field")]
+    #[arg(short = 'f')]
+    #[arg(help = "Field id for field where the file is held")]
+    field_id: i32,
+
+    #[arg(long = "file")]
+    #[arg(short = 'l')]
+    #[arg(help = "The id of the file")]
+    file_id: i32,
   },
 }
 
@@ -316,7 +418,7 @@ mod tests {
 
   #[test]
   fn parse_cli_from_when_called_with_apps_get_it_should_return_cli() {
-    let result = parse_cli_from(["test", "apps", "get", "--app-id", "123"]);
+    let result = parse_cli_from(["test", "apps", "get", "--app", "123"]);
 
     assert_eq!(
       result,
@@ -333,7 +435,7 @@ mod tests {
 
   #[test]
   fn parse_cli_from_when_called_with_apps_get_short_flag_it_should_return_cli() {
-    let result = parse_cli_from(["test", "apps", "get", "-i", "123"]);
+    let result = parse_cli_from(["test", "apps", "get", "-a", "123"]);
 
     assert_eq!(
       result,
@@ -359,7 +461,7 @@ mod tests {
 
   #[test]
   fn parse_cli_from_when_called_with_apps_batch_get_it_should_return_cli() {
-    let result = parse_cli_from(["test", "apps", "batch-get", "--ids", "1,2,3"]);
+    let result = parse_cli_from(["test", "apps", "batch-get", "--apps", "1,2,3"]);
 
     assert_eq!(
       result,
@@ -395,7 +497,7 @@ mod tests {
   #[test]
   fn parse_cli_from_when_called_with_apps_batch_get_invalid_id_format_it_should_return_usage_error()
   {
-    let result = parse_cli_from(["test", "apps", "batch-get", "--ids", "invalid"]);
+    let result = parse_cli_from(["test", "apps", "batch-get", "--apps", "invalid"]);
 
     assert!(result.is_err());
     let err = result.unwrap_err();
@@ -448,7 +550,7 @@ mod tests {
 
   #[test]
   fn parse_cli_from_when_called_with_fields_list_it_should_return_cli() {
-    let result = parse_cli_from(["test", "fields", "list", "--app-id", "10"]);
+    let result = parse_cli_from(["test", "fields", "list", "--app", "10"]);
 
     assert_eq!(
       result,
@@ -472,7 +574,7 @@ mod tests {
       "test",
       "fields",
       "list",
-      "-i",
+      "-a",
       "10",
       "--page-number",
       "2",
@@ -510,7 +612,7 @@ mod tests {
 
   #[test]
   fn parse_cli_from_when_called_with_fields_get_it_should_return_cli() {
-    let result = parse_cli_from(["test", "fields", "get", "--field-id", "123"]);
+    let result = parse_cli_from(["test", "fields", "get", "--field", "123"]);
 
     assert_eq!(
       result,
@@ -527,7 +629,7 @@ mod tests {
 
   #[test]
   fn parse_cli_from_when_called_with_fields_get_short_flag_it_should_return_cli() {
-    let result = parse_cli_from(["test", "fields", "get", "-i", "123"]);
+    let result = parse_cli_from(["test", "fields", "get", "-f", "123"]);
 
     assert_eq!(
       result,
@@ -553,7 +655,7 @@ mod tests {
 
   #[test]
   fn parse_cli_from_when_called_with_fields_batch_get_it_should_return_cli() {
-    let result = parse_cli_from(["test", "fields", "batch-get", "--ids", "1,2,3"]);
+    let result = parse_cli_from(["test", "fields", "batch-get", "--fields", "1,2,3"]);
 
     assert_eq!(
       result,
@@ -589,7 +691,7 @@ mod tests {
   #[test]
   fn parse_cli_from_when_called_with_fields_batch_get_invalid_id_format_it_should_return_usage_error()
    {
-    let result = parse_cli_from(["test", "fields", "batch-get", "--ids", "invalid"]);
+    let result = parse_cli_from(["test", "fields", "batch-get", "--fields", "invalid"]);
 
     assert!(result.is_err());
     let err = result.unwrap_err();
@@ -680,7 +782,17 @@ mod tests {
   #[test]
   fn parse_cli_from_when_called_with_records_get_it_should_return_cli() {
     let result = parse_cli_from([
-      "test", "records", "get", "-a", "1", "-r", "10", "-f", "100", "-d", "formatted",
+      "test",
+      "records",
+      "get",
+      "-a",
+      "1",
+      "-r",
+      "10",
+      "-f",
+      "100",
+      "-d",
+      "formatted",
     ]);
 
     assert_eq!(
@@ -703,9 +815,7 @@ mod tests {
 
   #[test]
   fn parse_cli_from_when_called_with_records_save_json_it_should_return_cli() {
-    let result = parse_cli_from([
-      "test", "records", "save", "--json", r#"{"appId":1}"#,
-    ]);
+    let result = parse_cli_from(["test", "records", "save", "--json", r#"{"appId":1}"#]);
 
     assert_eq!(
       result,
@@ -748,9 +858,7 @@ mod tests {
 
   #[test]
   fn parse_cli_from_when_called_with_records_batch_get_it_should_return_cli() {
-    let result = parse_cli_from([
-      "test", "records", "batch-get", "-f", "input.json",
-    ]);
+    let result = parse_cli_from(["test", "records", "batch-get", "-f", "input.json"]);
 
     assert_eq!(
       result,
@@ -773,9 +881,7 @@ mod tests {
 
   #[test]
   fn parse_cli_from_when_called_with_records_query_it_should_return_cli() {
-    let result = parse_cli_from([
-      "test", "records", "query", "--stdin", "-n", "1", "-s", "50",
-    ]);
+    let result = parse_cli_from(["test", "records", "query", "--stdin", "-n", "1", "-s", "50"]);
 
     assert_eq!(
       result,
@@ -803,7 +909,11 @@ mod tests {
   #[test]
   fn parse_cli_from_when_called_with_records_batch_delete_it_should_return_cli() {
     let result = parse_cli_from([
-      "test", "records", "batch-delete", "-j", r#"{"appId":1,"recordIds":[10]}"#,
+      "test",
+      "records",
+      "batch-delete",
+      "-j",
+      r#"{"appId":1,"recordIds":[10]}"#,
     ]);
 
     assert_eq!(
@@ -828,6 +938,115 @@ mod tests {
   #[test]
   fn parse_cli_from_when_called_with_records_without_subcommand_it_should_return_usage_error() {
     let result = parse_cli_from(["test", "records"]);
+
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert_eq!(err.code, 2);
+  }
+
+  #[test]
+  fn parse_cli_from_when_called_with_files_info_it_should_return_cli() {
+    let result = parse_cli_from([
+      "test", "files", "info", "--record", "1", "--field", "2", "--file", "3",
+    ]);
+
+    assert_eq!(
+      result,
+      Ok(Cli {
+        api_key: None,
+        base_url: None,
+        pretty: false,
+        command: Command::Files {
+          command: FilesCommand::Info {
+            record_id: 1,
+            field_id: 2,
+            file_id: 3,
+          },
+        },
+      })
+    );
+  }
+
+  #[test]
+  fn parse_cli_from_when_called_with_files_get_it_should_return_cli() {
+    let result = parse_cli_from([
+      "test", "files", "get", "-r", "1", "-f", "2", "-l", "3", "-o", "out.bin",
+    ]);
+
+    assert_eq!(
+      result,
+      Ok(Cli {
+        api_key: None,
+        base_url: None,
+        pretty: false,
+        command: Command::Files {
+          command: FilesCommand::Get {
+            record_id: 1,
+            field_id: 2,
+            file_id: 3,
+            output: Some(std::path::PathBuf::from("out.bin")),
+          },
+        },
+      })
+    );
+  }
+
+  #[test]
+  fn parse_cli_from_when_called_with_files_upload_it_should_return_cli() {
+    let result = parse_cli_from([
+      "test", "files", "upload", "-r", "1", "-f", "2", "-i", "doc.pdf", "-n", "renamed.pdf",
+      "-t", "application/pdf", "--notes", "test notes", "--modified-date",
+      "2026-01-01T00:00:00Z",
+    ]);
+
+    assert_eq!(
+      result,
+      Ok(Cli {
+        api_key: None,
+        base_url: None,
+        pretty: false,
+        command: Command::Files {
+          command: FilesCommand::Upload {
+            record_id: 1,
+            field_id: 2,
+            input: Some(std::path::PathBuf::from("doc.pdf")),
+            stdin: false,
+            file_name: Some("renamed.pdf".to_string()),
+            content_type: Some("application/pdf".to_string()),
+            notes: Some("test notes".to_string()),
+            modified_date: Some("2026-01-01T00:00:00Z".to_string()),
+          },
+        },
+      })
+    );
+  }
+
+  #[test]
+  fn parse_cli_from_when_called_with_files_delete_it_should_return_cli() {
+    let result = parse_cli_from([
+      "test", "files", "delete", "--record", "10", "--field", "20", "--file", "30",
+    ]);
+
+    assert_eq!(
+      result,
+      Ok(Cli {
+        api_key: None,
+        base_url: None,
+        pretty: false,
+        command: Command::Files {
+          command: FilesCommand::Delete {
+            record_id: 10,
+            field_id: 20,
+            file_id: 30,
+          },
+        },
+      })
+    );
+  }
+
+  #[test]
+  fn parse_cli_from_when_called_with_files_without_subcommand_it_should_return_usage_error() {
+    let result = parse_cli_from(["test", "files"]);
 
     assert!(result.is_err());
     let err = result.unwrap_err();

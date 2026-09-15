@@ -1,7 +1,8 @@
 use onspring::{
-  App, BatchDeleteRecordsRequest, BatchGetRecordsRequest, CollectionResponse, DataFormat, Field,
-  OnspringClient, OnspringError, PagedResponse, PagingRequest, QueryRecordsRequest, Record,
-  SaveRecordRequest, SaveRecordResponse,
+  App, BatchDeleteRecordsRequest, BatchGetRecordsRequest, CollectionResponse,
+  CreatedWithIdResponse, DataFormat, Field, FileInfo, FileResponse, OnspringClient, OnspringError,
+  PagedResponse, PagingRequest, QueryRecordsRequest, Record, SaveFileRequest, SaveRecordRequest,
+  SaveRecordResponse,
 };
 
 pub trait OnspringRunner {
@@ -79,6 +80,32 @@ pub trait OnspringRunner {
   fn batch_delete_records(
     &self,
     request: BatchDeleteRecordsRequest,
+  ) -> impl std::future::Future<Output = Result<(), OnspringError>> + Send;
+
+  fn get_file_info(
+    &self,
+    record_id: i32,
+    field_id: i32,
+    file_id: i32,
+  ) -> impl std::future::Future<Output = Result<FileInfo, OnspringError>> + Send;
+
+  fn get_file(
+    &self,
+    record_id: i32,
+    field_id: i32,
+    file_id: i32,
+  ) -> impl std::future::Future<Output = Result<FileResponse, OnspringError>> + Send;
+
+  fn upload_file(
+    &self,
+    request: SaveFileRequest,
+  ) -> impl std::future::Future<Output = Result<CreatedWithIdResponse, OnspringError>> + Send;
+
+  fn delete_file(
+    &self,
+    record_id: i32,
+    field_id: i32,
+    file_id: i32,
   ) -> impl std::future::Future<Output = Result<(), OnspringError>> + Send;
 }
 
@@ -170,6 +197,40 @@ impl OnspringRunner for OnspringClient {
   ) -> Result<(), OnspringError> {
     self.batch_delete_records(request).await
   }
+
+  async fn get_file_info(
+    &self,
+    record_id: i32,
+    field_id: i32,
+    file_id: i32,
+  ) -> Result<FileInfo, OnspringError> {
+    self.get_file_info(record_id, field_id, file_id).await
+  }
+
+  async fn get_file(
+    &self,
+    record_id: i32,
+    field_id: i32,
+    file_id: i32,
+  ) -> Result<FileResponse, OnspringError> {
+    self.get_file(record_id, field_id, file_id).await
+  }
+
+  async fn upload_file(
+    &self,
+    request: SaveFileRequest,
+  ) -> Result<CreatedWithIdResponse, OnspringError> {
+    self.upload_file(request).await
+  }
+
+  async fn delete_file(
+    &self,
+    record_id: i32,
+    field_id: i32,
+    file_id: i32,
+  ) -> Result<(), OnspringError> {
+    self.delete_file(record_id, field_id, file_id).await
+  }
 }
 
 #[cfg(test)]
@@ -219,6 +280,25 @@ pub mod testing {
     pub query_records_request: Mutex<Option<QueryRecordsRequest>>,
     pub query_records_paging: Mutex<Option<Option<PagingRequest>>>,
     pub batch_delete_records_request: Mutex<Option<BatchDeleteRecordsRequest>>,
+
+    pub get_file_info_result: Result<FileInfo, OnspringError>,
+    pub get_file_result: Result<FileResponse, OnspringError>,
+    pub upload_file_result: Result<CreatedWithIdResponse, OnspringError>,
+    pub delete_file_result: Result<(), OnspringError>,
+
+    pub get_file_info_record_id: Mutex<Option<i32>>,
+    pub get_file_info_field_id: Mutex<Option<i32>>,
+    pub get_file_info_file_id: Mutex<Option<i32>>,
+
+    pub get_file_record_id: Mutex<Option<i32>>,
+    pub get_file_field_id: Mutex<Option<i32>>,
+    pub get_file_file_id: Mutex<Option<i32>>,
+
+    pub upload_file_request: Mutex<Option<SaveFileRequest>>,
+
+    pub delete_file_record_id: Mutex<Option<i32>>,
+    pub delete_file_field_id: Mutex<Option<i32>>,
+    pub delete_file_file_id: Mutex<Option<i32>>,
   }
 
   impl Default for MockClient {
@@ -322,6 +402,38 @@ pub mod testing {
         query_records_request: Mutex::new(None),
         query_records_paging: Mutex::new(None),
         batch_delete_records_request: Mutex::new(None),
+
+        get_file_info_result: Ok(FileInfo {
+          file_type: None,
+          content_type: None,
+          name: None,
+          created_date: None,
+          modified_date: None,
+          owner: None,
+          notes: None,
+          file_href: None,
+        }),
+        get_file_result: Ok(FileResponse {
+          content_type: None,
+          file_name: None,
+          data: bytes::Bytes::new(),
+        }),
+        upload_file_result: Ok(CreatedWithIdResponse { id: 1 }),
+        delete_file_result: Ok(()),
+
+        get_file_info_record_id: Mutex::new(None),
+        get_file_info_field_id: Mutex::new(None),
+        get_file_info_file_id: Mutex::new(None),
+
+        get_file_record_id: Mutex::new(None),
+        get_file_field_id: Mutex::new(None),
+        get_file_file_id: Mutex::new(None),
+
+        upload_file_request: Mutex::new(None),
+
+        delete_file_record_id: Mutex::new(None),
+        delete_file_field_id: Mutex::new(None),
+        delete_file_file_id: Mutex::new(None),
       }
     }
   }
@@ -492,6 +604,62 @@ pub mod testing {
     ) -> Result<(), OnspringError> {
       *self.batch_delete_records_request.lock().unwrap() = Some(request);
       match &self.batch_delete_records_result {
+        Ok(()) => Ok(()),
+        Err(err) => Err(clone_onspring_error(err)),
+      }
+    }
+
+    async fn get_file_info(
+      &self,
+      record_id: i32,
+      field_id: i32,
+      file_id: i32,
+    ) -> Result<FileInfo, OnspringError> {
+      *self.get_file_info_record_id.lock().unwrap() = Some(record_id);
+      *self.get_file_info_field_id.lock().unwrap() = Some(field_id);
+      *self.get_file_info_file_id.lock().unwrap() = Some(file_id);
+      match &self.get_file_info_result {
+        Ok(res) => Ok(res.clone()),
+        Err(err) => Err(clone_onspring_error(err)),
+      }
+    }
+
+    async fn get_file(
+      &self,
+      record_id: i32,
+      field_id: i32,
+      file_id: i32,
+    ) -> Result<FileResponse, OnspringError> {
+      *self.get_file_record_id.lock().unwrap() = Some(record_id);
+      *self.get_file_field_id.lock().unwrap() = Some(field_id);
+      *self.get_file_file_id.lock().unwrap() = Some(file_id);
+      match &self.get_file_result {
+        Ok(res) => Ok(res.clone()),
+        Err(err) => Err(clone_onspring_error(err)),
+      }
+    }
+
+    async fn upload_file(
+      &self,
+      request: SaveFileRequest,
+    ) -> Result<CreatedWithIdResponse, OnspringError> {
+      *self.upload_file_request.lock().unwrap() = Some(request);
+      match &self.upload_file_result {
+        Ok(res) => Ok(res.clone()),
+        Err(err) => Err(clone_onspring_error(err)),
+      }
+    }
+
+    async fn delete_file(
+      &self,
+      record_id: i32,
+      field_id: i32,
+      file_id: i32,
+    ) -> Result<(), OnspringError> {
+      *self.delete_file_record_id.lock().unwrap() = Some(record_id);
+      *self.delete_file_field_id.lock().unwrap() = Some(field_id);
+      *self.delete_file_file_id.lock().unwrap() = Some(file_id);
+      match &self.delete_file_result {
         Ok(()) => Ok(()),
         Err(err) => Err(clone_onspring_error(err)),
       }

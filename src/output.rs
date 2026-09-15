@@ -1,8 +1,10 @@
 use std::io::Write;
 
+use chrono::{DateTime, Utc};
 use onspring::{
-  App, CollectionResponse, Field, FormulaOutputType, ListFieldValue, Multiplicity, PagedResponse,
-  Record, RecordFieldValue, SaveRecordResponse, ValueType,
+  App, CollectionResponse, CreatedWithIdResponse, Field, FileInfo, FormulaOutputType,
+  ListFieldValue, Multiplicity, PagedResponse, Record, RecordFieldValue, SaveRecordResponse,
+  ValueType,
 };
 use serde::Serialize;
 use uuid::Uuid;
@@ -205,6 +207,47 @@ impl From<SaveRecordResponse> for SaveRecordResponseOutput {
       id: value.id,
       warnings: value.warnings,
     }
+  }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileInfoOutput {
+  #[serde(rename = "type")]
+  pub file_type: Option<String>,
+  pub content_type: Option<String>,
+  pub name: Option<String>,
+  pub created_date: Option<DateTime<Utc>>,
+  pub modified_date: Option<DateTime<Utc>>,
+  pub owner: Option<String>,
+  pub notes: Option<String>,
+  pub file_href: Option<String>,
+}
+
+impl From<FileInfo> for FileInfoOutput {
+  fn from(value: FileInfo) -> Self {
+    Self {
+      file_type: value.file_type,
+      content_type: value.content_type,
+      name: value.name,
+      created_date: value.created_date,
+      modified_date: value.modified_date,
+      owner: value.owner,
+      notes: value.notes,
+      file_href: value.file_href,
+    }
+  }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreatedWithIdResponseOutput {
+  pub id: i32,
+}
+
+impl From<CreatedWithIdResponse> for CreatedWithIdResponseOutput {
+  fn from(value: CreatedWithIdResponse) -> Self {
+    Self { id: value.id }
   }
 }
 

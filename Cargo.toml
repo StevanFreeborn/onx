@@ -7,6 +7,7 @@ license = "MIT"
 repository = "https://github.com/StevanFreeborn/onx"
 
 [dependencies]
+bytes = "1.12.1"
 chrono = { version = "0.4.45", features = ["serde"] }
 clap = { version = "4.6.6", features = ["derive", "env"] }
 mime_guess = "2.0.5"
