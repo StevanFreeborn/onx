@@ -1,6 +1,7 @@
 pub mod apps;
-pub mod ping;
 pub mod fields;
+pub mod ping;
+pub mod records;
 
 use std::io::Write;
 
@@ -17,5 +18,6 @@ pub async fn handle<C: OnspringRunner, W: Write>(
     Command::Ping => ping::handle(client, writer, cli.pretty).await,
     Command::Apps { command } => apps::handle(command, client, writer, cli.pretty).await,
     Command::Fields { command } => fields::handle(command, client, writer, cli.pretty).await,
-}
+    Command::Records { command } => records::handle(command, client, writer, cli.pretty).await
+  }
 }

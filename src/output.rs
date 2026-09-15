@@ -2,6 +2,7 @@ use std::io::Write;
 
 use onspring::{
   App, CollectionResponse, Field, FormulaOutputType, ListFieldValue, Multiplicity, PagedResponse,
+  Record, RecordFieldValue, SaveRecordResponse, ValueType,
 };
 use serde::Serialize;
 use uuid::Uuid;
@@ -148,6 +149,61 @@ impl From<Field> for FieldOutput {
         .map(|values| values.into_iter().map(ListFieldValueOutput::from).collect()),
       output_type: value.output_type,
       referenced_app_id: value.referenced_app_id,
+    }
+  }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecordFieldValueOutput {
+  #[serde(rename = "type")]
+  pub value_type: ValueType,
+  pub field_id: i32,
+  pub value: serde_json::Value,
+}
+
+impl From<RecordFieldValue> for RecordFieldValueOutput {
+  fn from(value: RecordFieldValue) -> Self {
+    Self {
+      value_type: value.value_type,
+      field_id: value.field_id,
+      value: value.value,
+    }
+  }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecordOutput {
+  pub app_id: i32,
+  pub record_id: i32,
+  pub field_data: Option<Vec<RecordFieldValueOutput>>,
+}
+
+impl From<Record> for RecordOutput {
+  fn from(value: Record) -> Self {
+    Self {
+      app_id: value.app_id,
+      record_id: value.record_id,
+      field_data: value
+        .field_data
+        .map(|fields| fields.into_iter().map(RecordFieldValueOutput::from).collect()),
+    }
+  }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SaveRecordResponseOutput {
+  pub id: i32,
+  pub warnings: Option<Vec<String>>,
+}
+
+impl From<SaveRecordResponse> for SaveRecordResponseOutput {
+  fn from(value: SaveRecordResponse) -> Self {
+    Self {
+      id: value.id,
+      warnings: value.warnings,
     }
   }
 }

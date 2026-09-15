@@ -1,4 +1,6 @@
-use clap::{Args, Parser, Subcommand};
+use std::path::PathBuf;
+
+use clap::{Args, Parser, Subcommand, ValueEnum};
 
 #[derive(Debug, PartialEq, Parser)]
 #[command(name = "onx")]
@@ -31,15 +33,23 @@ pub struct Cli {
 pub enum Command {
   #[command(about = "Check connectivity to the Onspring API")]
   Ping,
+
   #[command(about = "Perform operations against the apps in the instance")]
   Apps {
     #[command(subcommand)]
     command: AppsCommand,
   },
+
   #[command(about = "Perform operations against the fields in the instance")]
   Fields {
     #[command(subcommand)]
     command: FieldsCommand,
+  },
+
+  #[command(about = "Perform operations against the records in the instance")]
+  Records {
+    #[command(subcommand)]
+    command: RecordsCommand,
   },
 }
 
@@ -50,17 +60,19 @@ pub enum AppsCommand {
 
   #[command(about = "Get information about an app")]
   Get {
-    #[arg(long)]
+    #[arg(long = "app-id")]
     #[arg(short = 'i')]
+    #[arg(alias = "app")]
     #[arg(help = "App id to get")]
     app_id: i32,
   },
 
   #[command(about = "Get information for a batch of apps")]
   BatchGet {
-    #[arg(long)]
+    #[arg(long = "ids")]
     #[arg(value_delimiter = ',')]
     #[arg(short = 'i')]
+    #[arg(alias = "apps")]
     #[arg(help = "Comma-separated list of app ids to get")]
     ids: Vec<i32>,
   },
@@ -70,30 +82,121 @@ pub enum AppsCommand {
 pub enum FieldsCommand {
   #[command(about = "Get information for a list of fields")]
   List {
-    #[arg(long)]
+    #[arg(long = "app-id")]
     #[arg(short = 'i')]
-    #[arg(help = "App id to get")]
+    #[arg(alias = "app")]
+    #[arg(help = "App id whose fields will be retrieved")]
     app_id: i32,
-    
+
     #[command(flatten)]
     paging: PagingArgs,
   },
 
   #[command(about = "Get information about a field")]
   Get {
-    #[arg(long)]
+    #[arg(long = "field-id")]
     #[arg(short = 'i')]
+    #[arg(alias = "field")]
     #[arg(help = "Field id to get")]
     field_id: i32,
   },
 
   #[command(about = "Get information for a batch of fields")]
   BatchGet {
-    #[arg(long)]
+    #[arg(long = "ids")]
     #[arg(value_delimiter = ',')]
     #[arg(short = 'i')]
+    #[arg(alias = "fields")]
     #[arg(help = "Comma-separated list of field ids to get")]
     ids: Vec<i32>,
+  },
+}
+
+#[derive(Debug, PartialEq, Subcommand)]
+pub enum RecordsCommand {
+  #[command(about = "Get information for a list of records")]
+  List {
+    #[arg(long = "app")]
+    #[arg(short = 'a')]
+    #[arg(help = "App id whose records will be retrieved")]
+    app_id: i32,
+
+    #[command(flatten)]
+    paging: PagingArgs,
+
+    #[arg(long = "fields")]
+    #[arg(value_delimiter = ',')]
+    #[arg(short = 'f')]
+    #[arg(help = "Comma-separated list of fields whose data will be included in the response")]
+    field_ids: Vec<i32>,
+
+    #[arg(long)]
+    data_format: Option<DataFormatArg>,
+  },
+
+  #[command(about = "Get information for a record")]
+  Get {
+    #[arg(long = "app")]
+    #[arg(short = 'a')]
+    #[arg(help = "App id for record to be retrieved")]
+    app_id: i32,
+
+    #[arg(long = "record")]
+    #[arg(short = 'r')]
+    #[arg(help = "Record id for record to be retrieved")]
+    record_id: i32,
+
+    #[arg(long = "fields")]
+    #[arg(value_delimiter = ',')]
+    #[arg(short = 'f')]
+    #[arg(help = "Comma-separated list of fields whose data will be included in the response")]
+    field_ids: Vec<i32>,
+
+    #[arg(long = "format")]
+    #[arg(short = 'd')]
+    #[arg(help = "Format of data in response")]
+    data_format: Option<DataFormatArg>,
+  },
+
+  #[command(about = "Add or update a record")]
+  #[command()]
+  Save {
+    #[command(flatten)]
+    body: BodySource,
+  },
+
+  #[command(about = "Delete a record")]
+  Delete {
+    #[arg(long = "app")]
+    #[arg(short = 'a')]
+    #[arg(help = "App id for record to delete")]
+    app_id: i32,
+
+    #[arg(long = "record")]
+    #[arg(short = 'r')]
+    #[arg(help = "Record id for record to delete")]
+    record_id: i32,
+  },
+
+  #[command(about = "Get information for a batch of records")]
+  BatchGet {
+    #[command(flatten)]
+    body: BodySource,
+  },
+
+  #[command(about = "Get information for a list of records based on a query")]
+  Query {
+    #[command(flatten)]
+    body: BodySource,
+
+    #[command(flatten)]
+    paging: PagingArgs,
+  },
+
+  #[command(about = "Delete a batch of records")]
+  BatchDelete {
+    #[command(flatten)]
+    body: BodySource,
   },
 }
 
@@ -108,6 +211,29 @@ pub struct PagingArgs {
   #[arg(short = 's')]
   #[arg(help = "The size of the page retrieve")]
   pub page_size: Option<i32>,
+}
+
+#[derive(Debug, PartialEq, Clone, Args, Default)]
+pub struct BodySource {
+  #[arg(long)]
+  #[arg(short = 'j')]
+  #[arg(help = "Inline JSON request body")]
+  pub json: Option<String>,
+
+  #[arg(long)]
+  #[arg(short = 'f')]
+  #[arg(help = "Path to a JSON request body file")]
+  pub file: Option<PathBuf>,
+
+  #[arg(long)]
+  #[arg(help = "Read JSON request body from stdin")]
+  pub stdin: bool,
+}
+
+#[derive(Debug, PartialEq, Clone, Copy, ValueEnum)]
+pub enum DataFormatArg {
+  Raw,
+  Formatted,
 }
 
 pub fn parse_cli_from<I, T>(args: I) -> crate::error::CliResult<Cli>
@@ -444,7 +570,7 @@ mod tests {
 
   #[test]
   fn parse_cli_from_when_called_with_fields_batch_get_without_ids_it_should_return_cli_with_empty_ids()
-  {
+   {
     let result = parse_cli_from(["test", "fields", "batch-get"]);
 
     assert_eq!(
@@ -462,7 +588,7 @@ mod tests {
 
   #[test]
   fn parse_cli_from_when_called_with_fields_batch_get_invalid_id_format_it_should_return_usage_error()
-  {
+   {
     let result = parse_cli_from(["test", "fields", "batch-get", "--ids", "invalid"]);
 
     assert!(result.is_err());
@@ -488,5 +614,223 @@ mod tests {
     assert_eq!(err.code, 0);
     assert!(err.message.contains(env!("CARGO_PKG_NAME")));
     assert!(err.message.contains(env!("CARGO_PKG_VERSION")));
+  }
+
+  #[test]
+  fn parse_cli_from_when_called_with_records_list_it_should_return_cli() {
+    let result = parse_cli_from(["test", "records", "list", "--app", "1"]);
+
+    assert_eq!(
+      result,
+      Ok(Cli {
+        api_key: None,
+        base_url: None,
+        pretty: false,
+        command: Command::Records {
+          command: RecordsCommand::List {
+            app_id: 1,
+            paging: PagingArgs::default(),
+            field_ids: vec![],
+            data_format: None,
+          },
+        },
+      })
+    );
+  }
+
+  #[test]
+  fn parse_cli_from_when_called_with_records_list_all_flags_it_should_return_cli() {
+    let result = parse_cli_from([
+      "test",
+      "records",
+      "list",
+      "-a",
+      "1",
+      "-n",
+      "2",
+      "-s",
+      "10",
+      "-f",
+      "100,200",
+      "--data-format",
+      "raw",
+    ]);
+
+    assert_eq!(
+      result,
+      Ok(Cli {
+        api_key: None,
+        base_url: None,
+        pretty: false,
+        command: Command::Records {
+          command: RecordsCommand::List {
+            app_id: 1,
+            paging: PagingArgs {
+              page_number: Some(2),
+              page_size: Some(10),
+            },
+            field_ids: vec![100, 200],
+            data_format: Some(DataFormatArg::Raw),
+          },
+        },
+      })
+    );
+  }
+
+  #[test]
+  fn parse_cli_from_when_called_with_records_get_it_should_return_cli() {
+    let result = parse_cli_from([
+      "test", "records", "get", "-a", "1", "-r", "10", "-f", "100", "-d", "formatted",
+    ]);
+
+    assert_eq!(
+      result,
+      Ok(Cli {
+        api_key: None,
+        base_url: None,
+        pretty: false,
+        command: Command::Records {
+          command: RecordsCommand::Get {
+            app_id: 1,
+            record_id: 10,
+            field_ids: vec![100],
+            data_format: Some(DataFormatArg::Formatted),
+          },
+        },
+      })
+    );
+  }
+
+  #[test]
+  fn parse_cli_from_when_called_with_records_save_json_it_should_return_cli() {
+    let result = parse_cli_from([
+      "test", "records", "save", "--json", r#"{"appId":1}"#,
+    ]);
+
+    assert_eq!(
+      result,
+      Ok(Cli {
+        api_key: None,
+        base_url: None,
+        pretty: false,
+        command: Command::Records {
+          command: RecordsCommand::Save {
+            body: BodySource {
+              json: Some(r#"{"appId":1}"#.to_string()),
+              file: None,
+              stdin: false,
+            },
+          },
+        },
+      })
+    );
+  }
+
+  #[test]
+  fn parse_cli_from_when_called_with_records_delete_it_should_return_cli() {
+    let result = parse_cli_from(["test", "records", "delete", "-a", "1", "-r", "10"]);
+
+    assert_eq!(
+      result,
+      Ok(Cli {
+        api_key: None,
+        base_url: None,
+        pretty: false,
+        command: Command::Records {
+          command: RecordsCommand::Delete {
+            app_id: 1,
+            record_id: 10,
+          },
+        },
+      })
+    );
+  }
+
+  #[test]
+  fn parse_cli_from_when_called_with_records_batch_get_it_should_return_cli() {
+    let result = parse_cli_from([
+      "test", "records", "batch-get", "-f", "input.json",
+    ]);
+
+    assert_eq!(
+      result,
+      Ok(Cli {
+        api_key: None,
+        base_url: None,
+        pretty: false,
+        command: Command::Records {
+          command: RecordsCommand::BatchGet {
+            body: BodySource {
+              json: None,
+              file: Some(std::path::PathBuf::from("input.json")),
+              stdin: false,
+            },
+          },
+        },
+      })
+    );
+  }
+
+  #[test]
+  fn parse_cli_from_when_called_with_records_query_it_should_return_cli() {
+    let result = parse_cli_from([
+      "test", "records", "query", "--stdin", "-n", "1", "-s", "50",
+    ]);
+
+    assert_eq!(
+      result,
+      Ok(Cli {
+        api_key: None,
+        base_url: None,
+        pretty: false,
+        command: Command::Records {
+          command: RecordsCommand::Query {
+            body: BodySource {
+              json: None,
+              file: None,
+              stdin: true,
+            },
+            paging: PagingArgs {
+              page_number: Some(1),
+              page_size: Some(50),
+            },
+          },
+        },
+      })
+    );
+  }
+
+  #[test]
+  fn parse_cli_from_when_called_with_records_batch_delete_it_should_return_cli() {
+    let result = parse_cli_from([
+      "test", "records", "batch-delete", "-j", r#"{"appId":1,"recordIds":[10]}"#,
+    ]);
+
+    assert_eq!(
+      result,
+      Ok(Cli {
+        api_key: None,
+        base_url: None,
+        pretty: false,
+        command: Command::Records {
+          command: RecordsCommand::BatchDelete {
+            body: BodySource {
+              json: Some(r#"{"appId":1,"recordIds":[10]}"#.to_string()),
+              file: None,
+              stdin: false,
+            },
+          },
+        },
+      })
+    );
+  }
+
+  #[test]
+  fn parse_cli_from_when_called_with_records_without_subcommand_it_should_return_usage_error() {
+    let result = parse_cli_from(["test", "records"]);
+
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert_eq!(err.code, 2);
   }
 }
