@@ -58,14 +58,49 @@ $ChecksumUrl = "$DownloadUrl.sha256"
 $TempDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.Guid]::NewGuid().ToString())
 New-Item -ItemType Directory -Force -Path $TempDir | Out-Null
 
+function Download-File {
+  param(
+    [string]$Uri,
+    [string]$OutFile,
+    [int]$MaxRetries = 3
+  )
+
+  $Attempt = 0
+  $DelaySeconds = 2
+
+  while ($Attempt -lt $MaxRetries) {
+    $Attempt++
+
+    try {
+      Invoke-WebRequest -Uri $Uri -OutFile $OutFile -Headers @{ "User-Agent" = "onx-installer" }
+
+      return
+    } catch {
+      $ErrorMessage = $_.Exception.Message
+
+      if ($Attempt -lt $MaxRetries) {
+        Write-Warning "Download attempt $Attempt failed ($ErrorMessage). Retrying in ${DelaySeconds}s..."
+
+        Start-Sleep -Seconds $DelaySeconds
+
+        $DelaySeconds = $DelaySeconds * 2
+      } else {
+        Write-Error "Failed to download $Uri after $MaxRetries attempts: $ErrorMessage"
+
+        exit 1
+      }
+    }
+  }
+}
+
 try {
   $ArchiveFile = Join-Path $TempDir $ArchiveName
   $ChecksumFile = Join-Path $TempDir "$ArchiveName.sha256"
 
   Write-Host "Downloading $BinaryName $Version for $Target..."
 
-  Invoke-WebRequest -Uri $DownloadUrl -OutFile $ArchiveFile
-  Invoke-WebRequest -Uri $ChecksumUrl -OutFile $ChecksumFile
+  Download-File -Uri $DownloadUrl -OutFile $ArchiveFile
+  Download-File -Uri $ChecksumUrl -OutFile $ChecksumFile
 
   Write-Host "Verifying SHA256 checksum..."
 

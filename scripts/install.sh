@@ -71,15 +71,35 @@ TARGET="${ARCH}-${OS}"
 download() {
   local url="$1"
   local output="$2"
+  local max_retries=3
+  local attempt=0
+  local delay=2
 
-  if command -v curl >/dev/null 2>&1; then
-    curl -fsSL "$url" -o "$output"
-  elif command -v wget >/dev/null 2>&1; then
-    wget -qO "$output" "$url"
-  else
-    echo "Error: Neither curl nor wget was found. Please install one of them." >&2
-    exit 1
-  fi
+  while [ "$attempt" -lt "$max_retries" ]; do
+    attempt=$((attempt + 1))
+
+    if command -v curl >/dev/null 2>&1; then
+      if curl -fsSL --retry 3 --retry-delay 2 -A "onx-installer" "$url" -o "$output"; then
+        return 0
+      fi
+    elif command -v wget >/dev/null 2>&1; then
+      if wget -q --tries=3 --waitretry=2 --user-agent="onx-installer" -O "$output" "$url"; then
+        return 0
+      fi
+    else
+      echo "Error: Neither curl nor wget was found. Please install one of them." >&2
+      exit 1
+    fi
+
+    if [ "$attempt" -lt "$max_retries" ]; then
+      echo "Download attempt ${attempt} failed. Retrying in ${delay}s..." >&2
+      sleep "$delay"
+      delay=$((delay * 2))
+    fi
+  done
+
+  echo "Error: Failed to download ${url} after ${max_retries} attempts." >&2
+  exit 1
 }
 
 if [ -z "${REQUESTED_VERSION}" ]; then
