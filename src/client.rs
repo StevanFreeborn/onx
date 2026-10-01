@@ -1,8 +1,9 @@
 use onspring::{
   App, BatchDeleteRecordsRequest, BatchGetRecordsRequest, CollectionResponse,
   CreatedWithIdResponse, DataFormat, Field, FileInfo, FileResponse, OnspringClient, OnspringError,
-  PagedResponse, PagingRequest, QueryRecordsRequest, Record, SaveFileRequest, SaveListItemRequest,
-  SaveListItemResponse, SaveRecordRequest, SaveRecordResponse,
+  PagedResponse, PagingRequest, QueryRecordsRequest, Record, ReportData, ReportDataType,
+  ReportInfo, SaveFileRequest, SaveListItemRequest, SaveListItemResponse, SaveRecordRequest,
+  SaveRecordResponse,
 };
 use uuid::Uuid;
 
@@ -120,6 +121,19 @@ pub trait OnspringRunner {
     list_id: i32,
     item_id: Uuid,
   ) -> impl std::future::Future<Output = Result<(), OnspringError>> + Send;
+
+  fn get_report(
+    &self,
+    report_id: i32,
+    data_format: Option<DataFormat>,
+    data_type: Option<ReportDataType>,
+  ) -> impl std::future::Future<Output = Result<ReportData, OnspringError>> + Send;
+
+  fn list_reports(
+    &self,
+    app_id: i32,
+    paging: Option<PagingRequest>,
+  ) -> impl std::future::Future<Output = Result<PagedResponse<ReportInfo>, OnspringError>> + Send;
 }
 
 impl OnspringRunner for OnspringClient {
@@ -256,6 +270,23 @@ impl OnspringRunner for OnspringClient {
   async fn delete_list_item(&self, list_id: i32, item_id: Uuid) -> Result<(), OnspringError> {
     self.delete_list_item(list_id, item_id).await
   }
+
+  async fn get_report(
+    &self,
+    report_id: i32,
+    data_format: Option<DataFormat>,
+    data_type: Option<ReportDataType>,
+  ) -> Result<ReportData, OnspringError> {
+    self.get_report(report_id, data_format, data_type).await
+  }
+
+  async fn list_reports(
+    &self,
+    app_id: i32,
+    paging: Option<PagingRequest>,
+  ) -> Result<PagedResponse<ReportInfo>, OnspringError> {
+    self.list_reports(app_id, paging).await
+  }
 }
 
 #[cfg(test)]
@@ -333,6 +364,16 @@ pub mod testing {
 
     pub delete_list_item_list_id: Mutex<Option<i32>>,
     pub delete_list_item_item_id: Mutex<Option<Uuid>>,
+
+    pub get_report_result: Result<ReportData, OnspringError>,
+    pub list_reports_result: Result<PagedResponse<ReportInfo>, OnspringError>,
+
+    pub get_report_report_id: Mutex<Option<i32>>,
+    pub get_report_data_format: Mutex<Option<Option<DataFormat>>>,
+    pub get_report_data_type: Mutex<Option<Option<ReportDataType>>>,
+
+    pub list_reports_app_id: Mutex<Option<i32>>,
+    pub list_reports_paging: Mutex<Option<Option<PagingRequest>>>,
   }
 
   impl Default for MockClient {
@@ -479,6 +520,25 @@ pub mod testing {
 
         delete_list_item_list_id: Mutex::new(None),
         delete_list_item_item_id: Mutex::new(None),
+
+        get_report_result: Ok(ReportData {
+          columns: None,
+          rows: None,
+        }),
+        list_reports_result: Ok(PagedResponse {
+          page_number: None,
+          page_size: None,
+          total_pages: None,
+          total_records: None,
+          items: None,
+        }),
+
+        get_report_report_id: Mutex::new(None),
+        get_report_data_format: Mutex::new(None),
+        get_report_data_type: Mutex::new(None),
+
+        list_reports_app_id: Mutex::new(None),
+        list_reports_paging: Mutex::new(None),
       }
     }
   }
@@ -728,6 +788,34 @@ pub mod testing {
       *self.delete_list_item_item_id.lock().unwrap() = Some(item_id);
       match &self.delete_list_item_result {
         Ok(()) => Ok(()),
+        Err(err) => Err(clone_onspring_error(err)),
+      }
+    }
+
+    async fn get_report(
+      &self,
+      report_id: i32,
+      data_format: Option<DataFormat>,
+      data_type: Option<ReportDataType>,
+    ) -> Result<ReportData, OnspringError> {
+      *self.get_report_report_id.lock().unwrap() = Some(report_id);
+      *self.get_report_data_format.lock().unwrap() = Some(data_format);
+      *self.get_report_data_type.lock().unwrap() = Some(data_type);
+      match &self.get_report_result {
+        Ok(res) => Ok(res.clone()),
+        Err(err) => Err(clone_onspring_error(err)),
+      }
+    }
+
+    async fn list_reports(
+      &self,
+      app_id: i32,
+      paging: Option<PagingRequest>,
+    ) -> Result<PagedResponse<ReportInfo>, OnspringError> {
+      *self.list_reports_app_id.lock().unwrap() = Some(app_id);
+      *self.list_reports_paging.lock().unwrap() = Some(paging);
+      match &self.list_reports_result {
+        Ok(res) => Ok(res.clone()),
         Err(err) => Err(clone_onspring_error(err)),
       }
     }

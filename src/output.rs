@@ -3,8 +3,8 @@ use std::io::Write;
 use chrono::{DateTime, Utc};
 use onspring::{
   App, CollectionResponse, CreatedWithIdResponse, Field, FileInfo, FormulaOutputType,
-  ListFieldValue, Multiplicity, PagedResponse, Record, RecordFieldValue, SaveListItemResponse,
-  SaveRecordResponse, ValueType,
+  ListFieldValue, Multiplicity, PagedResponse, Record, RecordFieldValue, ReportData, ReportInfo,
+  ReportRow, SaveListItemResponse, SaveRecordResponse, ValueType,
 };
 use serde::Serialize;
 use uuid::Uuid;
@@ -260,6 +260,60 @@ pub struct SaveListItemResponseOutput {
 impl From<SaveListItemResponse> for SaveListItemResponseOutput {
   fn from(value: SaveListItemResponse) -> Self {
     Self { id: value.id }
+  }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReportInfoOutput {
+  pub app_id: i32,
+  pub id: i32,
+  pub name: Option<String>,
+  pub description: Option<String>,
+}
+
+impl From<ReportInfo> for ReportInfoOutput {
+  fn from(value: ReportInfo) -> Self {
+    Self {
+      app_id: value.app_id,
+      id: value.id,
+      name: value.name,
+      description: value.description,
+    }
+  }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReportRowOutput {
+  pub record_id: Option<i32>,
+  pub cells: Option<Vec<serde_json::Value>>,
+}
+
+impl From<ReportRow> for ReportRowOutput {
+  fn from(value: ReportRow) -> Self {
+    Self {
+      record_id: value.record_id,
+      cells: value.cells,
+    }
+  }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReportDataOutput {
+  pub columns: Option<Vec<String>>,
+  pub rows: Option<Vec<ReportRowOutput>>,
+}
+
+impl From<ReportData> for ReportDataOutput {
+  fn from(value: ReportData) -> Self {
+    Self {
+      columns: value.columns,
+      rows: value
+        .rows
+        .map(|rows| rows.into_iter().map(ReportRowOutput::from).collect()),
+    }
   }
 }
 

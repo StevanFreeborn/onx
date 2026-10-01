@@ -10,15 +10,18 @@ use uuid::Uuid;
 pub struct Cli {
   #[arg(long)]
   #[arg(short = 'k')]
-  #[arg(env = "ONSPRING_API_KEY")]
   #[arg(help = "The API key for the Onspring instance")]
   pub api_key: Option<String>,
 
   #[arg(long)]
   #[arg(short = 'u')]
-  #[arg(env = "ONSPRING_BASE_URL")]
   #[arg(help = "The base URL for the Onspring API")]
   pub base_url: Option<String>,
+
+  #[arg(long)]
+  #[arg(short = 'c')]
+  #[arg(help = "Path to a configuration JSON file")]
+  pub config: Option<PathBuf>,
 
   #[arg(long)]
   #[arg(short = 'p')]
@@ -64,6 +67,12 @@ pub enum Command {
     #[command(subcommand)]
     command: ListsCommand,
   },
+
+  #[command(about = "Perform operations against the reports in the instance")]
+  Reports {
+    #[command(subcommand)]
+    command: ReportsCommand,
+  }
 }
 
 #[derive(Debug, PartialEq, Subcommand)]
@@ -319,7 +328,7 @@ pub enum ListsCommand {
     #[arg(short = 'l')]
     #[arg(help = "List id for list where the item should be saved")]
     list_id: i32,
-    
+
     #[command(flatten)]
     body: BodySource,
   },
@@ -335,6 +344,38 @@ pub enum ListsCommand {
     #[arg(short = 'i')]
     #[arg(help = "Id of the item that should be deleted")]
     item_id: Uuid,
+  },
+}
+
+#[derive(Debug, PartialEq, Subcommand)]
+pub enum ReportsCommand {
+  #[command(about = "Get the data for a specific report")]
+  Get {
+    #[arg(long = "report")]
+    #[arg(short = 'r')]
+    #[arg(help = "Report id whose data should be retrieved")]
+    report_id: i32,
+
+    #[arg(long = "format")]
+    #[arg(short = 'f')]
+    #[arg(help = "Format of the report data to be retrieved")]
+    data_format: Option<DataFormatArg>,
+
+    #[arg(long = "type")]
+    #[arg(short = 't')]
+    #[arg(help = "Type of the report data to be retrieved")]
+    data_type: Option<ReportDataTypeArg>,
+  },
+
+  #[command(about = "List the reports available in an app or survey")]
+  List {
+    #[arg(long = "app")]
+    #[arg(short = 'a')]
+    #[arg(help = "The id of the app whose reports should be listed")]
+    app_id: i32,
+
+    #[command(flatten)]
+    paging: PagingArgs,
   },
 }
 
@@ -374,6 +415,12 @@ pub enum DataFormatArg {
   Formatted,
 }
 
+#[derive(Debug, PartialEq, Clone, Copy, ValueEnum)]
+pub enum ReportDataTypeArg {
+  ReportData,
+  ChartData,
+}
+
 pub fn parse_cli_from<I, T>(args: I) -> crate::error::CliResult<Cli>
 where
   I: IntoIterator<Item = T>,
@@ -401,6 +448,7 @@ mod tests {
       Ok(Cli {
         api_key: None,
         base_url: None,
+        config: None,
         pretty: false,
         command: Command::Ping,
       })
@@ -416,6 +464,7 @@ mod tests {
       Ok(Cli {
         api_key: None,
         base_url: None,
+        config: None,
         pretty: false,
         command: Command::Apps {
           command: AppsCommand::List(PagingArgs::default()),
@@ -441,6 +490,7 @@ mod tests {
       Ok(Cli {
         api_key: None,
         base_url: None,
+        config: None,
         pretty: false,
         command: Command::Apps {
           command: AppsCommand::List(PagingArgs {
@@ -461,6 +511,7 @@ mod tests {
       Ok(Cli {
         api_key: None,
         base_url: None,
+        config: None,
         pretty: false,
         command: Command::Apps {
           command: AppsCommand::Get { app_id: 123 },
@@ -478,6 +529,7 @@ mod tests {
       Ok(Cli {
         api_key: None,
         base_url: None,
+        config: None,
         pretty: false,
         command: Command::Apps {
           command: AppsCommand::Get { app_id: 123 },
@@ -504,6 +556,7 @@ mod tests {
       Ok(Cli {
         api_key: None,
         base_url: None,
+        config: None,
         pretty: false,
         command: Command::Apps {
           command: AppsCommand::BatchGet { ids: vec![1, 2, 3] },
@@ -522,6 +575,7 @@ mod tests {
       Ok(Cli {
         api_key: None,
         base_url: None,
+        config: None,
         pretty: false,
         command: Command::Apps {
           command: AppsCommand::BatchGet { ids: vec![] },
@@ -593,6 +647,7 @@ mod tests {
       Ok(Cli {
         api_key: None,
         base_url: None,
+        config: None,
         pretty: false,
         command: Command::Fields {
           command: FieldsCommand::List {
@@ -623,6 +678,7 @@ mod tests {
       Ok(Cli {
         api_key: None,
         base_url: None,
+        config: None,
         pretty: false,
         command: Command::Fields {
           command: FieldsCommand::List {
@@ -655,6 +711,7 @@ mod tests {
       Ok(Cli {
         api_key: None,
         base_url: None,
+        config: None,
         pretty: false,
         command: Command::Fields {
           command: FieldsCommand::Get { field_id: 123 },
@@ -672,6 +729,7 @@ mod tests {
       Ok(Cli {
         api_key: None,
         base_url: None,
+        config: None,
         pretty: false,
         command: Command::Fields {
           command: FieldsCommand::Get { field_id: 123 },
@@ -698,6 +756,7 @@ mod tests {
       Ok(Cli {
         api_key: None,
         base_url: None,
+        config: None,
         pretty: false,
         command: Command::Fields {
           command: FieldsCommand::BatchGet { ids: vec![1, 2, 3] },
@@ -716,6 +775,7 @@ mod tests {
       Ok(Cli {
         api_key: None,
         base_url: None,
+        config: None,
         pretty: false,
         command: Command::Fields {
           command: FieldsCommand::BatchGet { ids: vec![] },
@@ -763,6 +823,7 @@ mod tests {
       Ok(Cli {
         api_key: None,
         base_url: None,
+        config: None,
         pretty: false,
         command: Command::Records {
           command: RecordsCommand::List {
@@ -799,6 +860,7 @@ mod tests {
       Ok(Cli {
         api_key: None,
         base_url: None,
+        config: None,
         pretty: false,
         command: Command::Records {
           command: RecordsCommand::List {
@@ -836,6 +898,7 @@ mod tests {
       Ok(Cli {
         api_key: None,
         base_url: None,
+        config: None,
         pretty: false,
         command: Command::Records {
           command: RecordsCommand::Get {
@@ -858,6 +921,7 @@ mod tests {
       Ok(Cli {
         api_key: None,
         base_url: None,
+        config: None,
         pretty: false,
         command: Command::Records {
           command: RecordsCommand::Save {
@@ -881,6 +945,7 @@ mod tests {
       Ok(Cli {
         api_key: None,
         base_url: None,
+        config: None,
         pretty: false,
         command: Command::Records {
           command: RecordsCommand::Delete {
@@ -901,6 +966,7 @@ mod tests {
       Ok(Cli {
         api_key: None,
         base_url: None,
+        config: None,
         pretty: false,
         command: Command::Records {
           command: RecordsCommand::BatchGet {
@@ -924,6 +990,7 @@ mod tests {
       Ok(Cli {
         api_key: None,
         base_url: None,
+        config: None,
         pretty: false,
         command: Command::Records {
           command: RecordsCommand::Query {
@@ -957,6 +1024,7 @@ mod tests {
       Ok(Cli {
         api_key: None,
         base_url: None,
+        config: None,
         pretty: false,
         command: Command::Records {
           command: RecordsCommand::BatchDelete {
@@ -991,6 +1059,7 @@ mod tests {
       Ok(Cli {
         api_key: None,
         base_url: None,
+        config: None,
         pretty: false,
         command: Command::Files {
           command: FilesCommand::Info {
@@ -1014,6 +1083,7 @@ mod tests {
       Ok(Cli {
         api_key: None,
         base_url: None,
+        config: None,
         pretty: false,
         command: Command::Files {
           command: FilesCommand::Get {
@@ -1054,6 +1124,7 @@ mod tests {
       Ok(Cli {
         api_key: None,
         base_url: None,
+        config: None,
         pretty: false,
         command: Command::Files {
           command: FilesCommand::Upload {
@@ -1082,6 +1153,7 @@ mod tests {
       Ok(Cli {
         api_key: None,
         base_url: None,
+        config: None,
         pretty: false,
         command: Command::Files {
           command: FilesCommand::Delete {
@@ -1106,7 +1178,13 @@ mod tests {
   #[test]
   fn parse_cli_from_when_called_with_lists_save_item_it_should_return_cli() {
     let result = parse_cli_from([
-      "test", "lists", "save-item", "-l", "1", "-j", r#"{"name":"Item 1"}"#,
+      "test",
+      "lists",
+      "save-item",
+      "-l",
+      "1",
+      "-j",
+      r#"{"name":"Item 1"}"#,
     ]);
 
     assert_eq!(
@@ -1114,6 +1192,7 @@ mod tests {
       Ok(Cli {
         api_key: None,
         base_url: None,
+        config: None,
         pretty: false,
         command: Command::Lists {
           command: ListsCommand::SaveItem {
@@ -1146,6 +1225,7 @@ mod tests {
       Ok(Cli {
         api_key: None,
         base_url: None,
+        config: None,
         pretty: false,
         command: Command::Lists {
           command: ListsCommand::DeleteItem {
@@ -1164,5 +1244,124 @@ mod tests {
     assert!(result.is_err());
     let err = result.unwrap_err();
     assert_eq!(err.code, 2);
+  }
+
+  #[test]
+  fn parse_cli_from_when_called_with_reports_get_it_should_return_cli() {
+    let result = parse_cli_from(["test", "reports", "get", "-r", "123"]);
+
+    assert_eq!(
+      result,
+      Ok(Cli {
+        api_key: None,
+        base_url: None,
+        config: None,
+        pretty: false,
+        command: Command::Reports {
+          command: ReportsCommand::Get {
+            report_id: 123,
+            data_format: None,
+            data_type: None,
+          },
+        },
+      })
+    );
+  }
+
+  #[test]
+  fn parse_cli_from_when_called_with_reports_get_with_options_it_should_return_cli() {
+    let result = parse_cli_from([
+      "test",
+      "reports",
+      "get",
+      "--report",
+      "456",
+      "--format",
+      "formatted",
+      "--type",
+      "chart-data",
+    ]);
+
+    assert_eq!(
+      result,
+      Ok(Cli {
+        api_key: None,
+        base_url: None,
+        config: None,
+        pretty: false,
+        command: Command::Reports {
+          command: ReportsCommand::Get {
+            report_id: 456,
+            data_format: Some(DataFormatArg::Formatted),
+            data_type: Some(ReportDataTypeArg::ChartData),
+          },
+        },
+      })
+    );
+  }
+
+  #[test]
+  fn parse_cli_from_when_called_with_reports_list_it_should_return_cli() {
+    let result = parse_cli_from(["test", "reports", "list", "-a", "10", "-n", "2", "-s", "25"]);
+
+    assert_eq!(
+      result,
+      Ok(Cli {
+        api_key: None,
+        base_url: None,
+        config: None,
+        pretty: false,
+        command: Command::Reports {
+          command: ReportsCommand::List {
+            app_id: 10,
+            paging: PagingArgs {
+              page_number: Some(2),
+              page_size: Some(25),
+            },
+          },
+        },
+      })
+    );
+  }
+
+  #[test]
+  fn parse_cli_from_when_called_with_reports_without_subcommand_it_should_return_usage_error() {
+    let result = parse_cli_from(["test", "reports"]);
+
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert_eq!(err.code, 2);
+  }
+
+  #[test]
+  fn parse_cli_from_when_called_with_config_flag_it_should_return_cli_with_config_path() {
+    let result = parse_cli_from(["test", "--config", "custom/config.json", "ping"]);
+
+    assert_eq!(
+      result,
+      Ok(Cli {
+        api_key: None,
+        base_url: None,
+        config: Some(PathBuf::from("custom/config.json")),
+        pretty: false,
+        command: Command::Ping,
+      })
+    );
+  }
+
+  #[test]
+  fn parse_cli_from_when_called_with_short_config_flag_it_should_return_cli_with_config_path() {
+    let result = parse_cli_from(["test", "-c", "custom/config.json", "ping"]);
+
+    assert_eq!(
+      result,
+      Ok(Cli {
+        api_key: None,
+        base_url: None,
+        config: Some(PathBuf::from("custom/config.json")),
+        pretty: false,
+        command: Command::Ping,
+      })
+    );
   }
 }
