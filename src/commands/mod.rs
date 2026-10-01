@@ -1,8 +1,9 @@
 pub mod apps;
 pub mod fields;
+pub mod files;
+pub mod lists;
 pub mod ping;
 pub mod records;
-pub mod files;
 
 use std::io::Write;
 
@@ -21,5 +22,6 @@ pub async fn handle<C: OnspringRunner, W: Write>(
     Command::Fields { command } => fields::handle(command, client, writer, cli.pretty).await,
     Command::Records { command } => records::handle(command, client, writer, cli.pretty).await,
     Command::Files { command } => files::handle(command, client, writer, cli.pretty).await,
-}
+    Command::Lists { command } => lists::handle(command, client, writer, cli.pretty).await,
+  }
 }

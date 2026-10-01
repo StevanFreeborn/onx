@@ -1,9 +1,10 @@
 use onspring::{
   App, BatchDeleteRecordsRequest, BatchGetRecordsRequest, CollectionResponse,
   CreatedWithIdResponse, DataFormat, Field, FileInfo, FileResponse, OnspringClient, OnspringError,
-  PagedResponse, PagingRequest, QueryRecordsRequest, Record, SaveFileRequest, SaveRecordRequest,
-  SaveRecordResponse,
+  PagedResponse, PagingRequest, QueryRecordsRequest, Record, SaveFileRequest, SaveListItemRequest,
+  SaveListItemResponse, SaveRecordRequest, SaveRecordResponse,
 };
+use uuid::Uuid;
 
 pub trait OnspringRunner {
   fn ping(&self) -> impl std::future::Future<Output = Result<(), OnspringError>> + Send;
@@ -106,6 +107,18 @@ pub trait OnspringRunner {
     record_id: i32,
     field_id: i32,
     file_id: i32,
+  ) -> impl std::future::Future<Output = Result<(), OnspringError>> + Send;
+
+  fn save_list_item(
+    &self,
+    list_id: i32,
+    request: SaveListItemRequest,
+  ) -> impl std::future::Future<Output = Result<SaveListItemResponse, OnspringError>> + Send;
+
+  fn delete_list_item(
+    &self,
+    list_id: i32,
+    item_id: Uuid,
   ) -> impl std::future::Future<Output = Result<(), OnspringError>> + Send;
 }
 
@@ -231,6 +244,18 @@ impl OnspringRunner for OnspringClient {
   ) -> Result<(), OnspringError> {
     self.delete_file(record_id, field_id, file_id).await
   }
+
+  async fn save_list_item(
+    &self,
+    list_id: i32,
+    request: SaveListItemRequest,
+  ) -> Result<SaveListItemResponse, OnspringError> {
+    self.save_list_item(list_id, request).await
+  }
+
+  async fn delete_list_item(&self, list_id: i32, item_id: Uuid) -> Result<(), OnspringError> {
+    self.delete_list_item(list_id, item_id).await
+  }
 }
 
 #[cfg(test)]
@@ -299,6 +324,15 @@ pub mod testing {
     pub delete_file_record_id: Mutex<Option<i32>>,
     pub delete_file_field_id: Mutex<Option<i32>>,
     pub delete_file_file_id: Mutex<Option<i32>>,
+
+    pub save_list_item_result: Result<SaveListItemResponse, OnspringError>,
+    pub delete_list_item_result: Result<(), OnspringError>,
+
+    pub save_list_item_list_id: Mutex<Option<i32>>,
+    pub save_list_item_request: Mutex<Option<SaveListItemRequest>>,
+
+    pub delete_list_item_list_id: Mutex<Option<i32>>,
+    pub delete_list_item_item_id: Mutex<Option<Uuid>>,
   }
 
   impl Default for MockClient {
@@ -434,6 +468,17 @@ pub mod testing {
         delete_file_record_id: Mutex::new(None),
         delete_file_field_id: Mutex::new(None),
         delete_file_file_id: Mutex::new(None),
+
+        save_list_item_result: Ok(SaveListItemResponse {
+          id: Uuid::nil(),
+        }),
+        delete_list_item_result: Ok(()),
+
+        save_list_item_list_id: Mutex::new(None),
+        save_list_item_request: Mutex::new(None),
+
+        delete_list_item_list_id: Mutex::new(None),
+        delete_list_item_item_id: Mutex::new(None),
       }
     }
   }
@@ -660,6 +705,28 @@ pub mod testing {
       *self.delete_file_field_id.lock().unwrap() = Some(field_id);
       *self.delete_file_file_id.lock().unwrap() = Some(file_id);
       match &self.delete_file_result {
+        Ok(()) => Ok(()),
+        Err(err) => Err(clone_onspring_error(err)),
+      }
+    }
+
+    async fn save_list_item(
+      &self,
+      list_id: i32,
+      request: SaveListItemRequest,
+    ) -> Result<SaveListItemResponse, OnspringError> {
+      *self.save_list_item_list_id.lock().unwrap() = Some(list_id);
+      *self.save_list_item_request.lock().unwrap() = Some(request);
+      match &self.save_list_item_result {
+        Ok(res) => Ok(res.clone()),
+        Err(err) => Err(clone_onspring_error(err)),
+      }
+    }
+
+    async fn delete_list_item(&self, list_id: i32, item_id: Uuid) -> Result<(), OnspringError> {
+      *self.delete_list_item_list_id.lock().unwrap() = Some(list_id);
+      *self.delete_list_item_item_id.lock().unwrap() = Some(item_id);
+      match &self.delete_list_item_result {
         Ok(()) => Ok(()),
         Err(err) => Err(clone_onspring_error(err)),
       }

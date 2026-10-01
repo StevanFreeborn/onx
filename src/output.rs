@@ -3,8 +3,8 @@ use std::io::Write;
 use chrono::{DateTime, Utc};
 use onspring::{
   App, CollectionResponse, CreatedWithIdResponse, Field, FileInfo, FormulaOutputType,
-  ListFieldValue, Multiplicity, PagedResponse, Record, RecordFieldValue, SaveRecordResponse,
-  ValueType,
+  ListFieldValue, Multiplicity, PagedResponse, Record, RecordFieldValue, SaveListItemResponse,
+  SaveRecordResponse, ValueType,
 };
 use serde::Serialize;
 use uuid::Uuid;
@@ -247,6 +247,18 @@ pub struct CreatedWithIdResponseOutput {
 
 impl From<CreatedWithIdResponse> for CreatedWithIdResponseOutput {
   fn from(value: CreatedWithIdResponse) -> Self {
+    Self { id: value.id }
+  }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SaveListItemResponseOutput {
+  pub id: Uuid,
+}
+
+impl From<SaveListItemResponse> for SaveListItemResponseOutput {
+  fn from(value: SaveListItemResponse) -> Self {
     Self { id: value.id }
   }
 }

@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
+use uuid::Uuid;
 
 #[derive(Debug, PartialEq, Parser)]
 #[command(name = "onx")]
@@ -56,6 +57,12 @@ pub enum Command {
   Files {
     #[command(subcommand)]
     command: FilesCommand,
+  },
+
+  #[command(about = "Perform operations against the lists in the instance")]
+  Lists {
+    #[command(subcommand)]
+    command: ListsCommand,
   },
 }
 
@@ -244,6 +251,7 @@ pub enum FilesCommand {
     output: Option<PathBuf>,
   },
 
+  #[command(about = "Upload a file to a field on a record")]
   Upload {
     #[arg(long = "record")]
     #[arg(short = 'r')]
@@ -284,6 +292,7 @@ pub enum FilesCommand {
     modified_date: Option<String>,
   },
 
+  #[command(about = "Delete a file from a field on a record")]
   Delete {
     #[arg(long = "record")]
     #[arg(short = 'r')]
@@ -299,6 +308,33 @@ pub enum FilesCommand {
     #[arg(short = 'l')]
     #[arg(help = "The id of the file")]
     file_id: i32,
+  },
+}
+
+#[derive(Debug, PartialEq, Subcommand)]
+pub enum ListsCommand {
+  #[command(about = "Add or update an item for a specific list")]
+  SaveItem {
+    #[arg(long = "list")]
+    #[arg(short = 'l')]
+    #[arg(help = "List id for list where the item should be saved")]
+    list_id: i32,
+    
+    #[command(flatten)]
+    body: BodySource,
+  },
+
+  #[command(about = "Delete an item from a specific list")]
+  DeleteItem {
+    #[arg(long = "list")]
+    #[arg(short = 'l')]
+    #[arg(help = "List id for list where the item should be saved")]
+    list_id: i32,
+
+    #[arg(long = "item")]
+    #[arg(short = 'i')]
+    #[arg(help = "Id of the item that should be deleted")]
+    item_id: Uuid,
   },
 }
 
@@ -994,8 +1030,22 @@ mod tests {
   #[test]
   fn parse_cli_from_when_called_with_files_upload_it_should_return_cli() {
     let result = parse_cli_from([
-      "test", "files", "upload", "-r", "1", "-f", "2", "-i", "doc.pdf", "-n", "renamed.pdf",
-      "-t", "application/pdf", "--notes", "test notes", "--modified-date",
+      "test",
+      "files",
+      "upload",
+      "-r",
+      "1",
+      "-f",
+      "2",
+      "-i",
+      "doc.pdf",
+      "-n",
+      "renamed.pdf",
+      "-t",
+      "application/pdf",
+      "--notes",
+      "test notes",
+      "--modified-date",
       "2026-01-01T00:00:00Z",
     ]);
 
@@ -1047,6 +1097,69 @@ mod tests {
   #[test]
   fn parse_cli_from_when_called_with_files_without_subcommand_it_should_return_usage_error() {
     let result = parse_cli_from(["test", "files"]);
+
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert_eq!(err.code, 2);
+  }
+
+  #[test]
+  fn parse_cli_from_when_called_with_lists_save_item_it_should_return_cli() {
+    let result = parse_cli_from([
+      "test", "lists", "save-item", "-l", "1", "-j", r#"{"name":"Item 1"}"#,
+    ]);
+
+    assert_eq!(
+      result,
+      Ok(Cli {
+        api_key: None,
+        base_url: None,
+        pretty: false,
+        command: Command::Lists {
+          command: ListsCommand::SaveItem {
+            list_id: 1,
+            body: BodySource {
+              json: Some(r#"{"name":"Item 1"}"#.to_string()),
+              file: None,
+              stdin: false,
+            },
+          },
+        },
+      })
+    );
+  }
+
+  #[test]
+  fn parse_cli_from_when_called_with_lists_delete_item_it_should_return_cli() {
+    let result = parse_cli_from([
+      "test",
+      "lists",
+      "delete-item",
+      "-l",
+      "10",
+      "-i",
+      "d3b07384-d113-40e1-a20c-55c3c0a4e70e",
+    ]);
+
+    assert_eq!(
+      result,
+      Ok(Cli {
+        api_key: None,
+        base_url: None,
+        pretty: false,
+        command: Command::Lists {
+          command: ListsCommand::DeleteItem {
+            list_id: 10,
+            item_id: Uuid::parse_str("d3b07384-d113-40e1-a20c-55c3c0a4e70e").unwrap(),
+          },
+        },
+      })
+    );
+  }
+
+  #[test]
+  fn parse_cli_from_when_called_with_lists_without_subcommand_it_should_return_usage_error() {
+    let result = parse_cli_from(["test", "lists"]);
 
     assert!(result.is_err());
     let err = result.unwrap_err();
